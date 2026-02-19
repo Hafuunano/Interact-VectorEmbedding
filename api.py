@@ -8,10 +8,11 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from config import CLASSIFY_TIMEOUT_SECONDS, EXECUTOR_WORKERS
+from config import CLASSIFY_TIMEOUT_SECONDS, EXECUTOR_WORKERS, SHORT_TEXT_MAX_LEN
 from emotion_classifier import classify, is_ready as emotion_ready
 from embedding import get_encoder
 from keywords import extract_keywords
+from rule_based_emotion import classify_rule_based, is_available as rule_based_available
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,6 +25,10 @@ _executor = ThreadPoolExecutor(max_workers=EXECUTOR_WORKERS)
 class ClassifyRequest(BaseModel):
     text: str = Field(..., min_length=1, description="Input text to classify")
     top_keywords: int = Field(default=5, ge=1, le=20, description="Number of keywords to return")
+    use_embedding: bool = Field(
+        default=True,
+        description="If True, use M3E embedding (when ready); if False, use rule-based keyword only.",
+    )
 
 
 class ClassifyResponse(BaseModel):
@@ -32,10 +37,21 @@ class ClassifyResponse(BaseModel):
     keywords: list[str]
 
 
-def _classify_and_keywords(text: str, top_keywords: int) -> dict[str, Any]:
-    result = classify(text)
-    kw = extract_keywords(text, top_k=top_keywords)
-    return {"emotion": result.emotion, "score": result.score, "keywords": kw}
+def _classify_and_keywords(
+    text: str, top_keywords: int, use_embedding: bool
+) -> dict[str, Any]:
+    stripped = text.strip()
+    # Short text: prefer rule-based first, then vector only for longer text
+    if len(stripped) <= SHORT_TEXT_MAX_LEN:
+        result = classify_rule_based(text)
+        return {"emotion": result.emotion, "score": result.score, "keywords": []}
+    if use_embedding and emotion_ready():
+        result = classify(text)
+        kw = extract_keywords(text, top_k=top_keywords)
+        return {"emotion": result.emotion, "score": result.score, "keywords": kw}
+    # Rule-based path when embedding disabled or not ready
+    result = classify_rule_based(text)
+    return {"emotion": result.emotion, "score": result.score, "keywords": []}
 
 
 @app.post("/classify", response_model=ClassifyResponse)
@@ -50,6 +66,7 @@ async def classify_endpoint(req: ClassifyRequest) -> ClassifyResponse:
                 _classify_and_keywords,
                 req.text.strip(),
                 req.top_keywords,
+                req.use_embedding,
             ),
             timeout=CLASSIFY_TIMEOUT_SECONDS,
         )
@@ -65,14 +82,16 @@ async def classify_endpoint(req: ClassifyRequest) -> ClassifyResponse:
 
 @app.get("/health")
 async def health() -> dict[str, Any]:
-    """Check model and category cache are ready."""
+    """Check model and category cache are ready. Rule-based is always available."""
     encoder_loaded = get_encoder() is not None
     categories_ready = emotion_ready()
+    rule_based = rule_based_available()
     ok = encoder_loaded and categories_ready
     return {
         "status": "ok" if ok else "degraded",
         "encoder_loaded": encoder_loaded,
         "categories_ready": categories_ready,
+        "rule_based_available": rule_based,
     }
 
 

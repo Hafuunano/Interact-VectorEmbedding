@@ -82,21 +82,6 @@ def main():
     # Create persistent vector DB (data under ./data/vector_db)
     store = get_vector_store()
 
-    # Example: add some Chinese/English sentences
-    docs = [
-        "Moka 此文本嵌入模型由 MokaAI 训练并开源，训练脚本使用 uniem",
-        "此模型通过千万级的中文句对数据集进行训练",
-        "支持中英双语的同质文本相似度计算与异质文本检索",
-    ]
-    store.add(docs, ids=["d1", "d2", "d3"])
-
-    # Search by semantic similarity
-    results = store.search("谁训练了这个嵌入模型？", n_results=2)
-    print("Query: 谁训练了这个嵌入模型？")
-    print("Results:", results.get("documents", [[]])[0])
-    print("Ids:", results.get("ids", [[]])[0])
-    print("Count:", store.count())
-
 
 if __name__ == "__main__":
     main()

@@ -24,6 +24,9 @@ EMOTION_LABELS = [
 KEYWORDS_TOP_K_DEFAULT = int(os.environ.get("KEYWORDS_TOP_K", "5"))
 KEYWORDS_TOP_K_MAX = 20
 
+# Short text: use rule-based first, then vector only for longer text
+SHORT_TEXT_MAX_LEN = int(os.environ.get("SHORT_TEXT_MAX_LEN", "10"))
+
 # API
 CLASSIFY_TIMEOUT_SECONDS = float(os.environ.get("CLASSIFY_TIMEOUT", "30"))
 EXECUTOR_WORKERS = int(os.environ.get("EXECUTOR_WORKERS", "2"))

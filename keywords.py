@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import re
+
+import jieba
 from embedding import encode
 
 
 def _segment_candidates(text: str, min_len: int = 2, max_len: int = 6) -> list[str]:
-    """Extract word/phrase candidates via jieba. Filter by length and dedupe."""
-    import jieba
+
 
     text = text.strip()
     if not text:

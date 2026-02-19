@@ -18,8 +18,8 @@ Zero-shot emotion classification + keyword extraction via embedding cosine simil
 uv run uvicorn api:app --reload --host 0.0.0.0 --port 8000
 ```
 
-- **POST /classify** — body: `{"text": "今天天气真好，周末去旅行放松一下", "top_keywords": 5}` → `{"emotion": "开心", "score": 0.82, "keywords": ["周末", "旅行", "放松", ...]}`
-- **GET /health** — encoder and category cache status
+- **POST /classify** — body: `{"text": "...", "top_keywords": 5, "use_embedding": true}` → `{"emotion": "开心", "score": 0.82, "keywords": [...]}`. Set `use_embedding: false` to use **rule-based** classification only (no model, keyword lists per emotion).
+- **GET /health** — encoder, category cache, and `rule_based_available` (always true when no model is needed).
 
 Config via env: `EMBEDDING_MODEL`, `KEYWORDS_TOP_K`, `CLASSIFY_TIMEOUT`, `EXECUTOR_WORKERS`. See `config.py`.
 

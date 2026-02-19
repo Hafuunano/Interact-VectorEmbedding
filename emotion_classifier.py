@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import threading
+import numpy as np
 from typing import NamedTuple
 
 from embedding import encode
 
 try:
-    from config import EMOTION_LABELS
+    from config import EMOTION_LABELS, SHORT_TEXT_MAX_LEN
 except ImportError:
     EMOTION_LABELS = ["开心", "悲伤", "愤怒", "惊讶", "恐惧", "厌恶", "中性"]
+    SHORT_TEXT_MAX_LEN = 10
 
 _lock = threading.Lock()
 _label_embeddings: list[list[float]] | None = None
@@ -37,7 +39,7 @@ def classify(text: str) -> EmotionResult:
     Classify text into one of the predefined emotions by cosine similarity.
     Returns the top-1 emotion label and score.
     """
-    import numpy as np
+
 
     if not text or not text.strip():
         return EmotionResult(emotion=EMOTION_LABELS[-1], score=0.0)  # neutral
@@ -53,3 +55,20 @@ def classify(text: str) -> EmotionResult:
 def is_ready() -> bool:
     """Return True if label embeddings are cached (model and categories ready)."""
     return _label_embeddings is not None
+
+
+def classify_with_fallback(text: str) -> EmotionResult:
+    """
+    Short text: use rule-based first. Longer text: use embedding when ready, else rule-based.
+    Return type is EmotionResult so callers get emotion + score in all cases.
+    """
+    from rule_based_emotion import classify_rule_based
+
+    stripped = (text or "").strip()
+    if len(stripped) <= SHORT_TEXT_MAX_LEN:
+        r = classify_rule_based(text)
+        return EmotionResult(emotion=r.emotion, score=r.score)
+    if is_ready():
+        return classify(text)
+    r = classify_rule_based(text)
+    return EmotionResult(emotion=r.emotion, score=r.score)
