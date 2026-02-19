@@ -1,0 +1,13 @@
+[project]
+name = "interact-vectorembedding"
+version = "0.1.0"
+description = "Simple Python Backend For transforming users action to tag"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "sentence-transformers>=3.0.0",
+    "chromadb>=0.4.0",
+    "jieba>=0.42.1",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+]
